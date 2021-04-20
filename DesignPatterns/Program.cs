@@ -1,4 +1,6 @@
-﻿using DesignPatterns.Strategy;
+﻿using System;
+using System.Drawing;
+using Pastel;
 
 namespace DesignPatterns
 {
@@ -6,7 +8,9 @@ namespace DesignPatterns
     {
         public static void Main(string[] args)
         {
-            StrategyDemo.RunDemo();
+            Strategy.StrategyDemo.RunDemo();
+            Console.WriteLine("-----------------------------------------------".Pastel(Color.DarkGreen));
+            Mediator.MediatorDemo.RunDemo();
         }
     }
 }
