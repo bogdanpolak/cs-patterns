@@ -15,7 +15,6 @@ namespace DesignPatterns.Strategy
             var orderProcessor = new OrderProcessor(new ReverseOrderStrategy());
 
             normalOrderProcessor.Execute(data);
-            Console.WriteLine();
             orderProcessor.Execute(data);
         }
     }
