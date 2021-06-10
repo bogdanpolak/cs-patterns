@@ -11,7 +11,7 @@ namespace DesignPatterns.DataPipeline
         {
             Console.WriteLine("*** Under construction ***");
             var pipeline = new Pipeline()
-                .Register(new FilterCsvFileLoader<FileName, CsvFile>());
+                .Register(new CsvFileLoader<FileName, CsvFile>());
             // ---
             var fileName = new FileName("parts.csv");
             var csvFile = (CsvFile)pipeline.Execute(fileName);
@@ -26,7 +26,7 @@ namespace DesignPatterns.DataPipeline
         }
     }
     
-    public class FilterCsvFileLoader<T, TU> : PipelineFilter<T, TU>
+    public class CsvFileLoader<T, TU> : PipelineProcessor<T, TU>
         where T : FileName
         where TU : CsvFile, new()
     {
@@ -76,32 +76,5 @@ namespace DesignPatterns.DataPipeline
         
         private static string GetData(string csvData) 
             => csvData.Replace("'", "\"");
-    }
-    
-    public interface IFilter
-    {
-        object Execute(object input);
-    }
-
-    public abstract class PipelineFilter<T, TU> : IFilter
-    {
-        protected abstract TU Process(T input);
-
-        object IFilter.Execute(object input) => Process((T)input);
-    }
-    
-    public class Pipeline
-    {
-        private readonly List<IFilter> _filters = new List<IFilter>();
-
-        public object Execute(object pipelineInput) =>
-            _filters.Aggregate(pipelineInput, 
-                (current, filter) => filter.Execute(current));
-
-        public Pipeline Register<T, TU>(PipelineFilter<T, TU> filter)
-        {
-            _filters.Add(filter);
-            return this;
-        }
     }
 }
