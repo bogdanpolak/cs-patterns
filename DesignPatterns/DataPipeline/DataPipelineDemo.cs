@@ -1,5 +1,7 @@
 using System;
 using System.Collections.Generic;
+using System.Linq;
+using System.Numerics;
 
 namespace DesignPatterns.DataPipeline
 {
@@ -18,7 +20,7 @@ namespace DesignPatterns.DataPipeline
                 "fca-alt-parts.csv","FCA");
             var alternateParts = (AlternateParts)pipeline.Execute(assetInfo);
             alternateParts.Parts.ForEach(
-                ap => Console.WriteLine($"{ap.Oem}, {ap.PartId}, {ap.AlternatePartId}, {ap.Price}"));
+                ap => Console.WriteLine($"{ap.Oem} | {ap.PartId} | {ap.AlternatePartId} | {ap.Price}"));
         }
     }
     
@@ -125,7 +127,7 @@ namespace DesignPatterns.DataPipeline
 
     public static class FtpChannel
     {
-        public static string ToOem(string channel) => channel;
+        public static string ToOem(string channel) => channel.ToLower();
     }
 
     public static class FtpClient
@@ -151,25 +153,32 @@ namespace DesignPatterns.DataPipeline
 
     public static class CsvTools
     {
+        private static readonly string[] SplitChars = new string[] { "," };
+        
         public static List<List<string>> ParseString(string csvString)
         {
-            /*
-            var text = DoLoadFile(fileName.ToString());
-            var splitChars = new string[] { "," };
-            var rows = text.Split('\n');
-            var csvFile = new CsvFile();
-            foreach (var row in rows)
-            {
-                csvFile.Lines.Add(row.Split(splitChars, StringSplitOptions.None).ToList());
-            }
-            return csvFile;
-            */
-            return new List<List<string>>();
+            var rows = csvString.Split('\n');
+            return rows
+                .Select(row => row
+                    .Split(SplitChars, StringSplitOptions.None)
+                    .ToList())
+                .ToList();
         }
         
-        public static List<List<string>> Normalize(List<List<string>> input)
+        public static List<List<string>> Normalize(List<List<string>> csvMatrix)
         {
-            return new List<List<string>>();
+            var maxCols = csvMatrix.Max(row => row?.Count ?? 0);
+            var csvNormalized = csvMatrix.Aggregate(new List<List<string>>(),
+                (acc, row) =>
+                {
+                    if (row == null || row.Count == 0 || (row.Count == 1 && row[0] == "")) 
+                        return acc;
+                    var newRow = new List<string>(row);
+                    while (newRow.Count < maxCols) newRow.Add("");
+                    acc.Add(newRow);
+                    return acc;
+                });
+            return csvNormalized;
         }
     }
 
@@ -177,8 +186,22 @@ namespace DesignPatterns.DataPipeline
     {
         public static AlternateParts GenerateAlternateParts(CsvFile input)
         {
+            var headerRow = input.Data[0];
+            var idxPartID = headerRow.IndexOf("\"PartID\"");
+            var idxAlternatePartID = headerRow.IndexOf("\"AlternatePartID\""); 
+            var idxPrice = headerRow.IndexOf("\"Price\"");
             var alternateParts = new AlternateParts();
-            alternateParts.Parts.Add( new AlternatePart("FCA", 1, 2, 12.34f));
+            if (idxPartID >= 0 && idxAlternatePartID >= 0 && idxPrice >= 0)
+            {
+                for (var idx = 1; idx < input.Data.Count; idx++)
+                {
+                    var row = input.Data[idx];
+                    var partId = int.Parse(row[idxPartID]);
+                    var alternatePartId = int.Parse(row[idxAlternatePartID]);
+                    var price = float.Parse(row[idxPrice]);
+                    alternateParts.Parts.Add(new AlternatePart(input.Oem, partId, alternatePartId, price));
+                }
+            }
             return alternateParts;
         }
     }
