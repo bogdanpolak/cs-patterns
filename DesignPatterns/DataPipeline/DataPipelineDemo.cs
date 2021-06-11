@@ -1,7 +1,5 @@
 using System;
 using System.Collections.Generic;
-using System.IO;
-using System.Linq;
 
 namespace DesignPatterns.DataPipeline
 {
@@ -11,47 +9,151 @@ namespace DesignPatterns.DataPipeline
         {
             Console.WriteLine("*** Under construction ***");
             var pipeline = new Pipeline()
-                .Register(new CsvFileLoader<FileName, CsvFile>());
+                .Register(new FtpDownloader<AssetInfo, LocalTextFile>())
+                .Register(new CsvReader<LocalTextFile, CsvFile>())
+                .Register(new CsvNormalizer<CsvFile, CsvFile>())
+                .Register(new CsvMapper<CsvFile, AlternateParts>());
             // ---
-            var fileName = new FileName("parts.csv");
-            var csvFile = (CsvFile)pipeline.Execute(fileName);
-            var header = csvFile.Lines[0];
-            Console.WriteLine($"|{header[0]}|{header[1]}|{header[2]}|");
-            Console.WriteLine("|---|---|---|");
-            for (int rowIdx = 1; rowIdx < csvFile.Lines.Count; rowIdx++)
-            {
-                var data = csvFile.Lines[rowIdx];
-                Console.WriteLine($"|{data[0]}|{data[1]}|{data[2]}|");
-            }
+            var assetInfo = new AssetInfo("localhost", "/usr/data/fca/", 
+                "fca-alt-parts.csv","FCA");
+            var alternateParts = (AlternateParts)pipeline.Execute(assetInfo);
+            alternateParts.Parts.ForEach(
+                ap => Console.WriteLine($"{ap.Oem}, {ap.PartId}, {ap.AlternatePartId}, {ap.Price}"));
         }
     }
     
-    public class CsvFileLoader<T, TU> : PipelineProcessor<T, TU>
-        where T : FileName
-        where TU : CsvFile, new()
+    // --------------------------------------------------------------------
+    // Domain - Model
+    // --------------------------------------------------------------------
+
+    public class AssetInfo
     {
-        protected override TU Process(T input) => (TU)CsvFileLoader.Load(input);
-    }
-    
-    public class FileName
-    {
-        private readonly string _name;
-        public FileName(string fileName)
+        public readonly string Channel;
+        public readonly string ServerName;
+        public readonly string RemoteFolder;
+        public readonly string FileName;
+
+        public AssetInfo(string serverName, string remoteFolder, string fileName, string channel)
         {
-            _name = fileName;
+            ServerName = serverName;
+            RemoteFolder = remoteFolder;
+            FileName = fileName;
+            Channel = channel;
         }
-        public override string ToString() => _name;
+    }
+
+    public class LocalTextFile
+    {
+        public string Oem;
+        public string Data;
+
+        public LocalTextFile(string oem, string data)
+        {
+            Oem = oem;
+            Data = data;
+        }
     }
 
     public class CsvFile
     {
-        public readonly List<List<string>> Lines = new List<List<string>>();
+        public string Oem;
+        public List<List<string>> Data = new List<List<string>>();
     }
 
-    public static class CsvFileLoader
+    public class AlternateParts
     {
-        public static CsvFile Load(FileName fileName)
+        public List<AlternatePart> Parts = new List<AlternatePart>();
+    }
+    public class AlternatePart
+    {
+        public string Oem;
+        public int PartId;
+        public int AlternatePartId;
+        public float Price;
+
+        public AlternatePart(string oem, int partId, int alternatePartId, float price)
         {
+            Oem = oem;
+            PartId = partId;
+            AlternatePartId = alternatePartId;
+            Price = price;
+        }
+    }
+    
+    // --------------------------------------------------------------------
+    // Domain - Processors
+    // --------------------------------------------------------------------
+
+    public class FtpDownloader<T, TU> : PipelineProcessor<T, TU>
+        where T : AssetInfo
+        where TU : LocalTextFile
+    {
+        protected override TU Process(T input) => 
+            (TU)new LocalTextFile(
+                FtpChannel.ToOem(input.Channel),
+                FtpClient.GetData(input.ServerName, input.RemoteFolder, input.FileName));
+    }
+
+    public class CsvReader<T, TU> : PipelineProcessor<T, TU>
+        where T : LocalTextFile
+        where TU : CsvFile
+    {
+        protected override TU Process(T input) => 
+            (TU)new CsvFile{ Oem = input.Oem, Data = CsvTools.ParseString(input.Data) };
+    }
+    
+    public class CsvNormalizer<T, TU> : PipelineProcessor<T, TU>
+        where T : CsvFile
+        where TU : CsvFile
+    {
+        protected override TU Process(T input) =>
+            (TU) new CsvFile { Oem = input.Oem, Data = CsvTools.Normalize(input.Data) };
+
+    }
+    
+    public class CsvMapper<T, TU> : PipelineProcessor<T, TU>
+        where T : CsvFile
+        where TU : AlternateParts
+    {
+        protected override TU Process(T input) =>
+            (TU) Transformation.GenerateAlternateParts(input);
+    }
+
+    // --------------------------------------------------------------------
+    // Implementations
+    // --------------------------------------------------------------------
+
+    public static class FtpChannel
+    {
+        public static string ToOem(string channel) => channel;
+    }
+
+    public static class FtpClient
+    {
+        public static string GetData(string serverName, string remoteFolder, string fileName)
+        {
+            if (string.IsNullOrEmpty(serverName) || string.IsNullOrEmpty(remoteFolder) ||
+                string.IsNullOrEmpty(fileName)) throw new ArgumentNullException();
+            switch (fileName)
+            {
+                case "fca-alt-parts.csv": return SingleToDoubleQuote(
+                    "'PartID','OemID','AlternatePartID','Price'\n"+
+                    "10904,33,204,72.33\n"+
+                    "11062,33,4040,185.12\n");
+                default: return SingleToDoubleQuote(
+                    $"PartID','AlternatePartID','Price'"+
+                    "6741,842,256.99\n"+
+                    "7179,519,99.99\n");
+            }
+        }
+        private static string SingleToDoubleQuote(string text) => text.Replace("'", "\"");
+    }
+
+    public static class CsvTools
+    {
+        public static List<List<string>> ParseString(string csvString)
+        {
+            /*
             var text = DoLoadFile(fileName.ToString());
             var splitChars = new string[] { "," };
             var rows = text.Split('\n');
@@ -61,20 +163,24 @@ namespace DesignPatterns.DataPipeline
                 csvFile.Lines.Add(row.Split(splitChars, StringSplitOptions.None).ToList());
             }
             return csvFile;
-        }
-
-        private static string DoLoadFile(string filename)
-        {
-            switch (filename)
-            {
-                case "parts.csv": return GetData(
-                    "'PartID','OemID','AlternatePartID'\n1204,33,10204");
-                default: return GetData(
-                    $"'FileName','Content','Sep'\n'{filename}','content of file ...',0");
-            }
+            */
+            return new List<List<string>>();
         }
         
-        private static string GetData(string csvData) 
-            => csvData.Replace("'", "\"");
+        public static List<List<string>> Normalize(List<List<string>> input)
+        {
+            return new List<List<string>>();
+        }
     }
+
+    public static class Transformation
+    {
+        public static AlternateParts GenerateAlternateParts(CsvFile input)
+        {
+            var alternateParts = new AlternateParts();
+            alternateParts.Parts.Add( new AlternatePart("FCA", 1, 2, 12.34f));
+            return alternateParts;
+        }
+    }
+
 }
