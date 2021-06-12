@@ -9,4 +9,15 @@
       <PackageReference Include="Pastel" Version="2.1.0" />
     </ItemGroup>
 
+    <ItemGroup>
+      <Compile Remove="Strategy\Order\Strategies\NormalStrategy.cs" />
+      <Compile Remove="Strategy\Order\Strategies\ReverseStrategy.cs" />
+      <Compile Remove="Strategy\Order\IOrderStrategy.cs" />
+      <Compile Remove="Strategy\Order\OrderProcessor.cs" />
+    </ItemGroup>
+
+    <ItemGroup>
+      <Folder Include="Strategy\Order\Strategies" />
+    </ItemGroup>
+
 </Project>
