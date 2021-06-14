@@ -7,13 +7,16 @@ namespace DesignPatterns.Strategy
         public static void RunDemo()
         {
             var resolution = new Resolution(400, 200);
-            var pictureResizer = new PictureResizer(resolution, new FakeCropCalculator());
+            var resizer1 = new PictureResizer(resolution, new MaxRealCropCalculator());
+            var resizer2 = new PictureResizer(resolution, new NoCropCalculator());
 
-            var _ = pictureResizer.Resize(new Image
+            var image200x120 = new Image
             {
                 Width = 200, Height = 120,
                 ContentRect = new Rect(50, 20, 150, 90)
-            });
+            };
+            resizer1.Resize(image200x120);
+            resizer2.Resize(image200x120);
         }
     }
     
@@ -34,6 +37,9 @@ namespace DesignPatterns.Strategy
             Width = width;
             Height = height;
         }
+
+        public override string ToString() 
+            => $"({Left},{Top}) {Width}x{Height}";
     }
     
     public class Image
@@ -74,6 +80,7 @@ namespace DesignPatterns.Strategy
             var rect = _cropRectCalculator.Calculate(image, _resolution);
             var croppedImage = DoCrop(image, rect);
             var resizedImage = DoResize(croppedImage, _resolution);
+            Console.WriteLine($"  {rect}");
             return resizedImage;
         }
 
@@ -124,11 +131,26 @@ namespace DesignPatterns.Strategy
     // Strategy pattern:    Strategies
     // --------------------------------------------------------------------
 
-    public class FakeCropCalculator : ICropRectCalculator
+    public class NoCropCalculator : ICropRectCalculator
+    {
+        public Rect Calculate(Image image, Resolution resolution)
+            => new Rect(0, 0, image.Width, image.Height);
+    }
+
+    public class MaxRealCropCalculator : ICropRectCalculator
     {
         public Rect Calculate(Image image, Resolution resolution)
         {
-            return new Rect(0, 0, 200, 100);
+            var multi = (float)resolution.Width / resolution.Height;
+            if (image.Width < image.Height * multi)
+            {
+                var hg = (int) (image.Width / multi);
+                var top = (image.Height - hg) / 2;
+                return new Rect(0, top, image.Width, hg);
+            }
+            var wd = (int)(image.Height*multi);
+            var left = (image.Width - wd) / 2;
+            return new Rect(left, 0, wd, image.Height);
         }
     }
 }
