@@ -8,9 +8,6 @@ namespace DesignPatterns
     {
         public static void Main(string[] args)
         {
-            Console.WriteLine("Strategy Pattern (behavioral)".Pastel(Color.Gold));
-            Strategy.StrategyDemo.RunDemo();
-            Console.WriteLine("-----------------------------------------------".Pastel(Color.DarkGreen));
             Console.WriteLine("Medatorn Pattern (behavioral)".Pastel(Color.Gold));
             Mediator.MediatorDemo.RunDemo();
             Console.WriteLine("-----------------------------------------------".Pastel(Color.DarkGreen));
@@ -19,6 +16,9 @@ namespace DesignPatterns
             Console.WriteLine("-----------------------------------------------".Pastel(Color.DarkGreen));
             Console.WriteLine("Data Pipeline Pattern (behavioral)".Pastel(Color.Gold));
             DataPipeline.DataPipelineDemo.RunDemo();
+            Console.WriteLine("-----------------------------------------------".Pastel(Color.DarkGreen));
+            Console.WriteLine("Strategy Pattern (behavioral)".Pastel(Color.Gold));
+            Strategy.StrategyDemo.RunDemo();
         }
     }
 }
