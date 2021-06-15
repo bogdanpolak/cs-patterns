@@ -14,10 +14,15 @@
       <Compile Remove="Strategy\Order\Strategies\ReverseStrategy.cs" />
       <Compile Remove="Strategy\Order\IOrderStrategy.cs" />
       <Compile Remove="Strategy\Order\OrderProcessor.cs" />
+      <Compile Remove="Strategy\Order\**" />
     </ItemGroup>
 
     <ItemGroup>
-      <Folder Include="Strategy\Order\Strategies" />
+      <EmbeddedResource Remove="Strategy\Order\**" />
+    </ItemGroup>
+
+    <ItemGroup>
+      <None Remove="Strategy\Order\**" />
     </ItemGroup>
 
 </Project>
