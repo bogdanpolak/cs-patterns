@@ -39,7 +39,7 @@ namespace DesignPatterns.Strategy
         }
 
         public override string ToString() 
-            => $"({Left},{Top}) {Width}x{Height}";
+            => $"Rect(({Left},{Top}),{Width}x{Height})";
     }
     
     public class Image
@@ -80,7 +80,9 @@ namespace DesignPatterns.Strategy
             var rect = _cropRectCalculator.Calculate(image, _resolution);
             var croppedImage = DoCrop(image, rect);
             var resizedImage = DoResize(croppedImage, _resolution);
-            Console.WriteLine($"  {rect}");
+            Console.WriteLine($"image: {image.Width}x{image.Height}"+
+                              $" - Crop{rect} => {_resolution.Width}x{_resolution.Height}"+
+                              $" - {_cropRectCalculator.GetStrategyName()}");
             return resizedImage;
         }
 
@@ -125,6 +127,7 @@ namespace DesignPatterns.Strategy
     public interface ICropRectCalculator
     {
         Rect Calculate(Image image, Resolution resolution);
+        string GetStrategyName();
     }
     
     // --------------------------------------------------------------------
@@ -135,6 +138,7 @@ namespace DesignPatterns.Strategy
     {
         public Rect Calculate(Image image, Resolution resolution)
             => new Rect(0, 0, image.Width, image.Height);
+        public string GetStrategyName() => "NoCrop Calculator";
     }
 
     public class MaxRealCropCalculator : ICropRectCalculator
@@ -152,5 +156,6 @@ namespace DesignPatterns.Strategy
             var left = (image.Width - wd) / 2;
             return new Rect(left, 0, wd, image.Height);
         }
+        public string GetStrategyName() => "MaxRealisticCrop Calculator";
     }
 }
