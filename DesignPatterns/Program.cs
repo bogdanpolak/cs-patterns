@@ -19,6 +19,9 @@ namespace DesignPatterns
             Console.WriteLine("-----------------------------------------------".Pastel(Color.DarkGreen));
             Console.WriteLine("Strategy Pattern (behavioral)".Pastel(Color.Gold));
             Strategy.StrategyDemo.RunDemo();
+            Console.WriteLine("-----------------------------------------------".Pastel(Color.DarkGreen));
+            Console.WriteLine("Visitor Pattern (behavioral)".Pastel(Color.Gold));
+            Visitor.VisitorDemo.RunDemo();
         }
     }
 }
