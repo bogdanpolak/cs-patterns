@@ -51,6 +51,7 @@ namespace DesignPatterns.Visitor
     public class Image
     {
         public List<Text> Texts;
+        // ... other image layers and shapes ...
     }
 
     public class Hotspot
