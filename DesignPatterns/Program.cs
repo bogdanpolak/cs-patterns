@@ -22,6 +22,9 @@ namespace DesignPatterns
             Console.WriteLine("-----------------------------------------------".Pastel(Color.DarkGreen));
             Console.WriteLine("Visitor Pattern (behavioral)".Pastel(Color.Gold));
             Visitor.VisitorDemo.RunDemo();
+            Console.WriteLine("-----------------------------------------------".Pastel(Color.DarkGreen));
+            Console.WriteLine("Chain of Responsibility II - Chained Workflows".Pastel(Color.Gold));
+            ChainResponsibility.WorkflowsDemo.RunDemo();
         }
     }
 }
