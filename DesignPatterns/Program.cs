@@ -8,7 +8,7 @@ namespace DesignPatterns
     {
         public static void Main(string[] args)
         {
-            Console.WriteLine("Medatorn Pattern (behavioral)".Pastel(Color.Gold));
+            Console.WriteLine("Mediator Pattern (behavioral)".Pastel(Color.Gold));
             Mediator.MediatorDemo.RunDemo();
             Console.WriteLine("-----------------------------------------------".Pastel(Color.DarkGreen));
             Console.WriteLine("Chain Of Responsibility Pattern (behavioral)".Pastel(Color.Gold));
