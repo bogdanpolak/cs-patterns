@@ -6,22 +6,24 @@ namespace DesignPatterns.ChainResponsibility
     {
         public static void RunDemo()
         {
-            var workflowChain = new WorkflowChain();
+            var workflow = new JaguarSvgzWorkflow(
+                new FiatImageWorkflow(
+                    new Terminator()));
             
             var jaguarSvgz = new Document("Illustrations", "svgz", "JLR*Jaguar");
             Console.Write($"New Document: {jaguarSvgz}  ==>  ");
-            workflowChain.Execute(jaguarSvgz);
+            workflow.Execute(jaguarSvgz);
 
             var fiatPng = new Document("Image", "png", "FCA*Fiat");
             Console.Write($"New Document: {fiatPng}  ==>  ");
-            workflowChain.Execute(jaguarSvgz);
+            workflow.Execute(fiatPng);
 
             var volvoCsv = new Document("Table", "cvs", "Volvo");
             Console.Write($"New Document: {volvoCsv}  ==>  ");
-            workflowChain.Execute(volvoCsv);
+            workflow.Execute(volvoCsv);
         }
     }
-    
+
     // --------------------------------------------------------------------
     // Model
     // --------------------------------------------------------------------
@@ -49,22 +51,6 @@ namespace DesignPatterns.ChainResponsibility
     // Workflows
     // --------------------------------------------------------------------
 
-    public class WorkflowChain
-    {
-        private readonly IWorkflow _workflow;
-
-        public WorkflowChain()
-        {
-            _workflow = new JaguarSvgzWorkflow(
-                new FiatImageWorkflow(
-                    new Terminator(null)));
-        }
-        public void Execute(Document document)
-        {
-            _workflow.Execute(document);
-        }
-    }
-    
     public interface IWorkflow
     {
         void Execute(Document document);
@@ -107,7 +93,7 @@ namespace DesignPatterns.ChainResponsibility
         {
             Console.WriteLine("Executing Jaguar SVGZ workflow");
             // DoWorkflowStep1();
-            // DoWorkflowDoStep2();
+            // ... Following steps
         }
 
         protected override bool IsMatchingWorkflow(Document document)
@@ -128,7 +114,7 @@ namespace DesignPatterns.ChainResponsibility
         {
             Console.WriteLine("Executing FiatImage workflow");
             // DoWorkflowStep1();
-            // DoWorkflowDoStep2();
+            // ... Following steps
         }
 
         protected override bool IsMatchingWorkflow(Document document)
@@ -139,7 +125,7 @@ namespace DesignPatterns.ChainResponsibility
     
     public class Terminator : BaseWorkflow
     {
-        public Terminator(IWorkflow nextWorkflow) : base(nextWorkflow) { }
+        public Terminator() : base(null) { }
         
         protected override void DoWorkflowExecute(Document document)
         {
