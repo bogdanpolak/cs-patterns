@@ -19,21 +19,21 @@ namespace DesignPatterns.Mediator
             var fieldSystem = mediator.GetFieldSystem();
 
             scheduler.StartTransmission(game);
-            fieldSystem.StartedFirstHalf();
-            fieldSystem.UpdateMatchMinute(1);
-            fieldSystem.UpdateMatchMinute(2);
-            fieldSystem.UpdateMatchMinute(3);
-            fieldSystem.UpdateMatchMinute(4);
-            fieldSystem.UpdateMatchMinute(5);
-            fieldSystem.UpdateMatchMinute(6);
-            fieldSystem.UpdateMatchMinute(7);
-            fieldSystem.UpdateMatchMinute(8);
-            fieldSystem.ScoreGoal(8,italianTeam.PlayerByNumber(10));
+            fieldSystem.StartFirstHalf();
+            fieldSystem.MatchMinute(1);
+            fieldSystem.MatchMinute(2);
+            fieldSystem.MatchMinute(3);
+            fieldSystem.MatchMinute(4);
+            fieldSystem.MatchMinute(5);
+            fieldSystem.MatchMinute(6);
+            fieldSystem.MatchMinute(7);
+            fieldSystem.MatchMinute(8);
+            fieldSystem.ScoreGoal(italianTeam.PlayerByNumber(10));
             new List<int>{9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25}
-                .ForEach(minute => fieldSystem.UpdateMatchMinute(minute));
-            fieldSystem.ScoreGoal(25,polishTeam.PlayerByNumber(20));
+                .ForEach(minute => fieldSystem.MatchMinute(minute));
+            fieldSystem.ScoreGoal(polishTeam.PlayerByNumber(20));
             new List<int>{26, 27, 28, 29, 30, 31, 32, 33, 34, 35, 36, 37, 38, 39, 40, 41, 42, 43}
-                .ForEach(minute => fieldSystem.UpdateMatchMinute(minute));
+                .ForEach(minute => fieldSystem.MatchMinute(minute));
         }
     }
 
@@ -205,25 +205,31 @@ namespace DesignPatterns.Mediator
     public class FieldSystem
     {
         private readonly IMediator _mediator;
+        private int _matchMinute;
 
         public FieldSystem(IMediator mediator)
         {
             _mediator = mediator;
         }
 
-        public void StartedFirstHalf()
+        public void StartFirstHalf()
         {
             _mediator.Game_FirstHalfStarted();
+            _matchMinute = 0;
         }
+        
+        //TODO: Add EndFirstHalf()
+        //TODO: Add StartSecondHalf()
 
-        public void UpdateMatchMinute(int minute)
+        public void MatchMinute(int minute)
         {
+            _matchMinute = minute;
             _mediator.UpdateDisplay(minute);
         }
 
-        public void ScoreGoal(int minute, Player player)
+        public void ScoreGoal(Player player)
         {
-            _mediator.ScoreGoal(minute, player);
+            _mediator.ScoreGoal(_matchMinute, player);
         }
     }
 
