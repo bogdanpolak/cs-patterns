@@ -1,7 +1,8 @@
 using System;
 using System.Collections.Generic;
 using System.Diagnostics.CodeAnalysis;
-using DesignPatterns.Mediator.Model;
+using System.Linq;
+using System.Threading;
 
 namespace DesignPatterns.Mediator
 {
@@ -44,7 +45,7 @@ namespace DesignPatterns.Mediator
     {
         [SuppressMessage("ReSharper", "StringLiteralTypo")]
         public static Team ItalianTeam() => new Team()
-            .SetName("Italy","ITA")
+            .TeamName("Italy","ITA")
             .AddPlayer(1, Position.Goalkeeper, "Salvatore", "Sirigu")
             .AddPlayer(16, Position.Goalkeeper, "Alex", "Meret")
             .AddPlayer(21, Position.Goalkeeper, "Gianluigi", "Donnarumma")
@@ -71,7 +72,7 @@ namespace DesignPatterns.Mediator
 
         [SuppressMessage("ReSharper", "StringLiteralTypo")]
         public static Team PolishTeam() => new Team()
-            .SetName("Poland", "POL")
+            .TeamName("Poland", "POL")
             .AddPlayer(1, Position.Goalkeeper, "Wojciech", "Szczęsny")
             .AddPlayer(12, Position.Goalkeeper, "Łukasz", "Skorupski") 
             .AddPlayer(22, Position.Goalkeeper, "Łukasz", "Fabiański")
@@ -99,5 +100,219 @@ namespace DesignPatterns.Mediator
             .AddPlayer(23, Position.Forward, "Dawid", "Kownacki")
             .AddPlayer(24, Position.Forward, "Jakub", "Świerczok");
     }
+
+    // --------------------------------------------------------------------
+    // Model
+    // --------------------------------------------------------------------
+
+    public enum Position
+    {
+        Goalkeeper,
+        Defence,
+        MidField,
+        Forward
+    }
     
+    public class Player
+    {
+        public int Number;
+        public Position Position;
+        public string FirstName;
+        public string LastName;
+        public Team Team;
+    }
+
+    public class Team
+    {
+        public string Name;
+        public string Abbreviation;
+        private readonly List<Player> _players = new List<Player>();
+            
+        public Team TeamName(string name, string abbreviation) 
+        {
+            Name = name;
+            Abbreviation = abbreviation;
+            return this;
+        }
+        public Team AddPlayer(int number, Position position, string firstName, string lastName)
+        {
+            var player = new Player
+            {
+                Number = number,
+                Position = position,
+                FirstName = firstName, LastName = lastName, 
+                Team = this
+            };
+            _players.Add(player);
+            return this;
+        }
+
+        public Player PlayerByNumber(int number) => _players.FirstOrDefault(pl => pl.Number == number);
+    }
+
+    public class Game
+    {
+        public int ResultA;
+        public int ResultB;
+        public Team TeamA;
+        public Team TeamB;
+
+        public void ScoreGoalForTeam(Team team)
+        {
+            if (team == TeamA)
+            {
+                ResultA++;
+            }
+            else
+            {
+                ResultB++;
+            }
+        }
+    }
+    // --------------------------------------------------------------------
+    // Mediator Contracts
+    // --------------------------------------------------------------------
+
+    public interface IMediator
+    {
+        void StartTransmission(Game game);
+        void WelcomeCompleted();
+        void Game_FirstHalfStarted();
+        void UpdateDisplay(int minute);
+        void ScoreGoal(int minute, Player player);
+    }
+
+    // --------------------------------------------------------------------
+    // Mediator Colleagues
+    //   (systems which are communicating between themself using mediator)
+    // --------------------------------------------------------------------
+    
+    public class Scheduler
+    {
+        private readonly IMediator _mediator;
+
+        public Scheduler(IMediator mediator)
+        {
+            _mediator = mediator;
+        }
+
+        public void StartTransmission(Game game)
+        {
+            _mediator.StartTransmission(game);
+        }
+    }
+
+    public class FieldSystem
+    {
+        private readonly IMediator _mediator;
+
+        public FieldSystem(IMediator mediator)
+        {
+            _mediator = mediator;
+        }
+
+        public void StartedFirstHalf()
+        {
+            _mediator.Game_FirstHalfStarted();
+        }
+
+        public void UpdateMatchMinute(int minute)
+        {
+            _mediator.UpdateDisplay(minute);
+        }
+
+        public void ScoreGoal(int minute, Player player)
+        {
+            _mediator.ScoreGoal(minute, player);
+        }
+    }
+
+    public class DisplaySystem
+    {
+        private readonly  IMediator _mediator;
+        private Game _game;
+
+        public DisplaySystem(IMediator mediator)
+        {
+            _mediator = mediator;
+        }
+
+        public void ShowWelcomeScreen(Game game)
+        {
+            _game = game;
+            Console.WriteLine($"Soccer match: {_game.TeamA.Name} - {_game.TeamB.Name}");
+            Console.WriteLine($"... Showing welcome screen");
+            Thread.Sleep(100);
+            _mediator.WelcomeCompleted();
+        }
+
+        public void SetTimer(int i)
+        {
+            ShowStatus(i);
+        }
+
+        public void ShowStatus(int minute)
+        {
+            if (minute%5 != 0) return;
+            Console.WriteLine($"   {minute}:00 | " + 
+                              $"{_game.ResultA}" + 
+                              $" [{_game.TeamA.Abbreviation}]-[{_game.TeamB.Abbreviation}] " + 
+                              $"{_game.ResultB}");
+        }
+
+        public void ScoreGoal(int minute, Player player)
+        {
+            _game.ScoreGoalForTeam(player.Team);
+            Console.WriteLine($"   GOAL for {player.Team.Name}!!! {player.FirstName} {player.LastName} scoring {minute}:00 ");
+        }
+    }
+
+    // --------------------------------------------------------------------
+    // Concrete Mediator
+    // --------------------------------------------------------------------
+
+    public class Mediator : IMediator
+    {
+        private readonly DisplaySystem _displaySystem;
+        private readonly FieldSystem _fieldSystem;
+        private readonly Scheduler _scheduler;
+
+        //TODO: Remove construction from mediator and separate each of the colleagues with the contract 
+        public Mediator()
+        {
+            var mediator = this;
+            _displaySystem = new DisplaySystem(mediator);
+            _fieldSystem = new FieldSystem(mediator);
+            _scheduler = new Scheduler(mediator);
+        }
+
+        public Scheduler GetScheduler() => _scheduler;
+        public FieldSystem GetFieldSystem() => _fieldSystem;
+
+        public void StartTransmission(Game game)
+        {
+            _displaySystem.ShowWelcomeScreen(game);
+        }
+        
+        public void WelcomeCompleted()
+        {
+            
+        }
+
+        public void Game_FirstHalfStarted()
+        {
+            _displaySystem.SetTimer(0);
+        }
+
+        public void UpdateDisplay(int minute)
+        {
+            _displaySystem.ShowStatus(minute);
+        }
+
+        public void ScoreGoal(int minute, Player player)
+        {
+            _displaySystem.ScoreGoal(minute, player);
+        }
+    }
+
 }
