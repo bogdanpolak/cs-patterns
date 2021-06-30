@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.Diagnostics.CodeAnalysis;
 using System.Linq;
 using System.Threading;
@@ -21,20 +22,14 @@ namespace DesignPatterns.Mediator
             
             scheduler.StartTransmission(game);
             fieldSystem.StartFirstHalf();
-            fieldSystem.MatchMinute(1);
-            fieldSystem.MatchMinute(2);
-            fieldSystem.MatchMinute(3);
-            fieldSystem.MatchMinute(4);
-            fieldSystem.MatchMinute(5);
-            fieldSystem.MatchMinute(6);
-            fieldSystem.MatchMinute(7);
-            fieldSystem.MatchMinute(8);
-            fieldSystem.ScoreGoal(italianTeam.PlayerByNumber(10));
-            new List<int>{9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25}
-                .ForEach(minute => fieldSystem.MatchMinute(minute));
-            fieldSystem.ScoreGoal(polishTeam.PlayerByNumber(20));
-            new List<int>{26, 27, 28, 29, 30, 31, 32, 33, 34, 35, 36, 37, 38, 39, 40, 41, 42, 43}
-                .ForEach(minute => fieldSystem.MatchMinute(minute));
+            IntRange.Gen(1, 45).ForEach(minute => { 
+                switch (minute)
+                {
+                    case (10): fieldSystem.ScoreGoal(italianTeam.PlayerByNumber(10)); break;
+                    case (25): fieldSystem.ScoreGoal(polishTeam.PlayerByNumber(20)); break;
+                    default: fieldSystem.MatchMinute(minute); break;
+                }
+            });
         }
     }
 
