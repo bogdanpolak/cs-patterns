@@ -15,9 +15,10 @@ namespace DesignPatterns.Mediator
             var game = new Game { TeamA = italianTeam, TeamB = polishTeam}; 
 
             var mediator = new Mediator();
-            var scheduler = mediator.GetScheduler();
-            var fieldSystem = mediator.GetFieldSystem();
-
+            var _ = new DisplaySystem(mediator);
+            var fieldSystem = new FieldSystem(mediator);
+            var scheduler = new Scheduler(mediator);
+            
             scheduler.StartTransmission(game);
             fieldSystem.StartFirstHalf();
             fieldSystem.MatchMinute(1);
@@ -175,10 +176,37 @@ namespace DesignPatterns.Mediator
 
     public interface IMediator
     {
+        void RegisterScheduler(IScheduler scheduler);
+        void RegisterFieldSystem(IFieldSystem fieldSystem);
+        void RegisterDisplaySystem(IDisplaySystem displaySystem);
         void StartTransmission(Game game);
         void WelcomeCompleted();
         void Game_FirstHalfStarted();
         void UpdateDisplay(int minute);
+        void ScoreGoal(int minute, Player player);
+    }
+    
+    // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+
+    public interface IScheduler
+    {
+        void StartTransmission(Game game);
+        bool IsActive();
+    }
+
+    public interface IFieldSystem
+    {
+        void StartFirstHalf();
+        void MatchMinute(int minute);
+        void ScoreGoal(Player player);
+        bool IsConnected();
+    }
+
+    public interface IDisplaySystem
+    {
+        void ShowWelcomeScreen(Game game);
+        void SetTimer(int i);
+        void ShowStatus(int minute);
         void ScoreGoal(int minute, Player player);
     }
 
@@ -187,22 +215,24 @@ namespace DesignPatterns.Mediator
     //   (systems which are communicating between themself using mediator)
     // --------------------------------------------------------------------
     
-    public class Scheduler
+    public class Scheduler : IScheduler
     {
         private readonly IMediator _mediator;
 
         public Scheduler(IMediator mediator)
         {
             _mediator = mediator;
+            _mediator.RegisterScheduler(this);
         }
-
         public void StartTransmission(Game game)
         {
             _mediator.StartTransmission(game);
         }
+
+        public bool IsActive() => true;
     }
 
-    public class FieldSystem
+    public class FieldSystem : IFieldSystem
     {
         private readonly IMediator _mediator;
         private int _matchMinute;
@@ -210,6 +240,7 @@ namespace DesignPatterns.Mediator
         public FieldSystem(IMediator mediator)
         {
             _mediator = mediator;
+            _mediator.RegisterFieldSystem(this);
         }
 
         public void StartFirstHalf()
@@ -231,9 +262,11 @@ namespace DesignPatterns.Mediator
         {
             _mediator.ScoreGoal(_matchMinute, player);
         }
+
+        public bool IsConnected() => true;
     }
 
-    public class DisplaySystem
+    public class DisplaySystem : IDisplaySystem
     {
         private readonly  IMediator _mediator;
         private Game _game;
@@ -241,6 +274,7 @@ namespace DesignPatterns.Mediator
         public DisplaySystem(IMediator mediator)
         {
             _mediator = mediator;
+            _mediator.RegisterDisplaySystem(this);
         }
 
         public void ShowWelcomeScreen(Game game)
@@ -279,25 +313,34 @@ namespace DesignPatterns.Mediator
 
     public class Mediator : IMediator
     {
-        private readonly DisplaySystem _displaySystem;
-        private readonly FieldSystem _fieldSystem;
-        private readonly Scheduler _scheduler;
+        private readonly List<IDisplaySystem> _displaySystems = new List<IDisplaySystem>();
+        private readonly List<IFieldSystem> _fieldSystems = new List<IFieldSystem>();
+        private readonly List<IScheduler> _schedulers = new List<IScheduler>();
 
-        //TODO: Remove construction from mediator and separate each of the colleagues with the contract 
-        public Mediator()
+        public void RegisterScheduler(IScheduler scheduler)
         {
-            var mediator = this;
-            _displaySystem = new DisplaySystem(mediator);
-            _fieldSystem = new FieldSystem(mediator);
-            _scheduler = new Scheduler(mediator);
+            _schedulers.Add(scheduler);
         }
 
-        public Scheduler GetScheduler() => _scheduler;
-        public FieldSystem GetFieldSystem() => _fieldSystem;
+        public void RegisterFieldSystem(IFieldSystem fieldSystem)
+        {
+            _fieldSystems.Add(fieldSystem);
+        }
 
+        public void RegisterDisplaySystem(IDisplaySystem displaySystem)
+        {
+            _displaySystems.Add(displaySystem);
+        }
+
+        public bool HasAllSystemOnline()
+            => _schedulers.All(scheduler => scheduler.IsActive())
+                && _fieldSystems.All(fieldSystem => fieldSystem.IsConnected());
+        
+        
         public void StartTransmission(Game game)
         {
-            _displaySystem.ShowWelcomeScreen(game);
+            _displaySystems.ForEach(
+                displaySystem => displaySystem.ShowWelcomeScreen(game));
         }
         
         public void WelcomeCompleted()
@@ -307,17 +350,20 @@ namespace DesignPatterns.Mediator
 
         public void Game_FirstHalfStarted()
         {
-            _displaySystem.SetTimer(0);
+            _displaySystems.ForEach(
+                displaySystem => displaySystem.SetTimer(0));
         }
 
         public void UpdateDisplay(int minute)
         {
-            _displaySystem.ShowStatus(minute);
+            _displaySystems.ForEach(
+                displaySystem => displaySystem.ShowStatus(minute));
         }
 
         public void ScoreGoal(int minute, Player player)
         {
-            _displaySystem.ScoreGoal(minute, player);
+            _displaySystems.ForEach(
+                displaySystem => displaySystem.ScoreGoal(minute, player));
         }
     }
 
