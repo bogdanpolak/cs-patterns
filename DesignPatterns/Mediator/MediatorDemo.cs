@@ -1,8 +1,6 @@
 using System;
 using System.Collections.Generic;
-using System.Diagnostics;
 using System.Linq;
-using System.Threading;
 
 namespace DesignPatterns.Mediator
 {
@@ -10,27 +8,30 @@ namespace DesignPatterns.Mediator
     {
         public static void RunDemo()
         {
-            var italianTeam = TeamBuilder.ItalianTeam();
-            var polishTeam =TeamBuilder.PolishTeam();
-            var game = new Game { TeamA = italianTeam, TeamB = polishTeam}; 
+            var teamItalian = TeamBuilder.ItalianTeam();
+            var teamPolish = TeamBuilder.PolishTeam();
+            var game = new Game { TeamA = teamItalian, TeamB = teamPolish}; 
+            var playerLorenzoInsane = teamItalian.PlayerByNumber(10);
+            var playerMatteoPessina = teamItalian.PlayerByNumber(8);
+            var playerPiotrZieliński = teamPolish.PlayerByNumber(20);
 
             var mediator = new Mediator();
-            var _ = new DisplaySystem(mediator);
-            var fieldSystem = new FieldSystem(mediator);
-            var scheduler = new Scheduler(mediator);
+            var _ = new DisplaySystem(mediator, game);
+            IFieldSystem fieldSystem = new FieldSystem(mediator, game);
+            IScheduler scheduler = new Scheduler(mediator);
             
-            scheduler.StartTransmission(game);
+            scheduler.StartTransmission();
             fieldSystem.StartFirstHalf();
-            var playerLorenzoInsane = italianTeam.PlayerByNumber(10);
-            var playerPiotrZieliński = polishTeam.PlayerByNumber(20);
-            IntRange.Gen(1, 45).ForEach(minute => { 
+            IntRange.Gen(1, 45).ForEach(minute => {
+                fieldSystem.MatchMinute(minute);
                 switch (minute)
                 {
-                    case (10): fieldSystem.ScoreGoal(playerLorenzoInsane); break;
-                    case (25): fieldSystem.ScoreGoal(playerPiotrZieliński); break;
-                    default: fieldSystem.MatchMinute(minute); break;
+                    case (11): fieldSystem.ScoreGoal(playerLorenzoInsane); break;
+                    case (26): fieldSystem.ScoreGoal(playerPiotrZieliński); break;
+                    case (41): fieldSystem.ScoreGoal(playerMatteoPessina); break;
                 }
             });
+            fieldSystem.EndFirstHalf();
         }
     }
 
@@ -85,20 +86,39 @@ namespace DesignPatterns.Mediator
 
     public class Game
     {
-        public int ResultA;
-        public int ResultB;
         public Team TeamA;
         public Team TeamB;
+        private readonly List<Tuple<int, int>> _goalsTeamA = new List<Tuple<int, int>>();
+        private readonly List<Tuple<int, int>> _goalsTeamB = new List<Tuple<int, int>>();
 
-        public void ScoreGoalForTeam(Team team)
+        public int ResultA => _goalsTeamA.Count;
+        public int ResultB => _goalsTeamB.Count;
+
+        public string GetResult => $"{ResultA} [{TeamA.Abbreviation}]"+
+                                   $" [{TeamB.Abbreviation}] {ResultB}";
+
+        public string GetGoals()
         {
-            if (team == TeamA)
+            var goals = new List<string>();
+            goals.AddRange(_goalsTeamA.Select(g =>
+                $"{g.Item1:000} {TeamA.PlayerByNumber(g.Item2).LastName} ({g.Item1}\")")
+            );
+            goals.AddRange(_goalsTeamB.Select(g =>
+                $"{g.Item1:000} {TeamB.PlayerByNumber(g.Item2).LastName} ({g.Item1}\")")
+            );
+            goals.Sort();
+            return string.Join(", ", goals.Select(s => s.Substring(4)));
+        } 
+
+        public void ScoreGoal(int minute, Player player)
+        {
+            if (player.Team == TeamA)
             {
-                ResultA++;
+                _goalsTeamA.Add(new Tuple<int, int>(minute,player.Number));
             }
             else
             {
-                ResultB++;
+                _goalsTeamB.Add(new Tuple<int, int>(minute,player.Number));
             }
         }
     }
@@ -111,19 +131,21 @@ namespace DesignPatterns.Mediator
         void RegisterScheduler(IScheduler scheduler);
         void RegisterFieldSystem(IFieldSystem fieldSystem);
         void RegisterDisplaySystem(IDisplaySystem displaySystem);
-        void StartTransmission(Game game);
-        void WelcomeCompleted();
+        void StartTransmission();
         void Game_FirstHalfStarted();
         void UpdateDisplay(int minute);
         void ScoreGoal(int minute, Player player);
+        void Game_FirstHalfEnded();
+        void TransmissionStopped();
     }
     
     // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 
     public interface IScheduler
     {
-        void StartTransmission(Game game);
+        void StartTransmission();
         bool IsActive();
+        void ReadyToStopTransmission();
     }
 
     public interface IFieldSystem
@@ -132,14 +154,18 @@ namespace DesignPatterns.Mediator
         void MatchMinute(int minute);
         void ScoreGoal(Player player);
         bool IsConnected();
+        void EndFirstHalf();
     }
 
     public interface IDisplaySystem
     {
-        void ShowWelcomeScreen(Game game);
+        void ShowWelcomeScreen();
         void SetTimer(int i);
         void ShowStatus(int minute);
         void ScoreGoal(int minute, Player player);
+        void FirstHalfFinished();
+        void TransmissionStopped();
+        void TransmissionStarted();
     }
 
     // --------------------------------------------------------------------
@@ -156,22 +182,29 @@ namespace DesignPatterns.Mediator
             _mediator = mediator;
             _mediator.RegisterScheduler(this);
         }
-        public void StartTransmission(Game game)
+        public void StartTransmission()
         {
-            _mediator.StartTransmission(game);
+            _mediator.StartTransmission();
         }
 
         public bool IsActive() => true;
+        
+        public void ReadyToStopTransmission()
+        {
+            _mediator.TransmissionStopped();
+        }
     }
 
     public class FieldSystem : IFieldSystem
     {
         private readonly IMediator _mediator;
+        private readonly Game _game;
         private int _matchMinute;
 
-        public FieldSystem(IMediator mediator)
+        public FieldSystem(IMediator mediator, Game game)
         {
             _mediator = mediator;
+            _game = game;
             _mediator.RegisterFieldSystem(this);
         }
 
@@ -180,8 +213,12 @@ namespace DesignPatterns.Mediator
             _mediator.Game_FirstHalfStarted();
             _matchMinute = 0;
         }
+
+        public void EndFirstHalf()
+        {
+            _mediator.Game_FirstHalfEnded();
+        }
         
-        //TODO: Add EndFirstHalf()
         //TODO: Add StartSecondHalf()
 
         public void MatchMinute(int minute)
@@ -192,6 +229,7 @@ namespace DesignPatterns.Mediator
 
         public void ScoreGoal(Player player)
         {
+            _game.ScoreGoal(_matchMinute, player);
             _mediator.ScoreGoal(_matchMinute, player);
         }
 
@@ -200,22 +238,18 @@ namespace DesignPatterns.Mediator
 
     public class DisplaySystem : IDisplaySystem
     {
-        private readonly  IMediator _mediator;
-        private Game _game;
+        private readonly Game _game;
 
-        public DisplaySystem(IMediator mediator)
-        {
-            _mediator = mediator;
-            _mediator.RegisterDisplaySystem(this);
-        }
-
-        public void ShowWelcomeScreen(Game game)
+        public DisplaySystem(IMediator mediator, Game game)
         {
             _game = game;
-            Console.WriteLine($"Soccer match: {_game.TeamA.Name} - {_game.TeamB.Name}");
-            Console.WriteLine($"... Showing welcome screen");
-            Thread.Sleep(100);
-            _mediator.WelcomeCompleted();
+            mediator.RegisterDisplaySystem(this);
+        }
+
+        public void ShowWelcomeScreen()
+        {
+            Console.WriteLine($"Welcome! Match: {_game.TeamA.Name} - {_game.TeamB.Name}");
+            Console.WriteLine($"Waiting for the game ...");
         }
 
         public void SetTimer(int i)
@@ -234,8 +268,24 @@ namespace DesignPatterns.Mediator
 
         public void ScoreGoal(int minute, Player player)
         {
-            _game.ScoreGoalForTeam(player.Team);
             Console.WriteLine($"   GOAL for {player.Team.Name}!!! {player.FirstName} {player.LastName} scoring {minute}:00 ");
+        }
+
+        public void FirstHalfFinished()
+        {
+            Console.WriteLine("First Half Finished."); 
+            Console.WriteLine($"    Result: {_game.GetResult}");
+            Console.WriteLine($"    Goals: {_game.GetGoals()}");
+        }
+
+        public void TransmissionStopped()
+        {
+            Console.WriteLine("Transmission stopped");
+        }
+
+        public void TransmissionStarted()
+        {
+            Console.WriteLine("Transmission started");
         }
     }
 
@@ -264,15 +314,19 @@ namespace DesignPatterns.Mediator
             _displaySystems.Add(displaySystem);
         }
 
-        public bool HasAllSystemOnline()
-            => _schedulers.All(scheduler => scheduler.IsActive())
-                && _fieldSystems.All(fieldSystem => fieldSystem.IsConnected());
-        
-        
-        public void StartTransmission(Game game)
+        private bool AllSchedulersAreActive() => _schedulers.All(scheduler => scheduler.IsActive());
+        private bool AllFieldSystemsAreConnected() => _fieldSystems.All(fieldSystem => fieldSystem.IsConnected());
+
+        public void StartTransmission()
         {
+            if (!AllSchedulersAreActive())
+                throw new ArgumentException("Schedulers are not active");
+            if (!AllFieldSystemsAreConnected())
+                throw new ArgumentException("Field Systems are connected");
             _displaySystems.ForEach(
-                displaySystem => displaySystem.ShowWelcomeScreen(game));
+                displaySystem => displaySystem.TransmissionStarted());
+            _displaySystems.ForEach(
+                displaySystem => displaySystem.ShowWelcomeScreen());
         }
         
         public void WelcomeCompleted()
@@ -297,6 +351,19 @@ namespace DesignPatterns.Mediator
             _displaySystems.ForEach(
                 displaySystem => displaySystem.ScoreGoal(minute, player));
         }
-    }
 
+        public void Game_FirstHalfEnded()
+        {
+            _displaySystems.ForEach( 
+                displaySystem => displaySystem.FirstHalfFinished());
+            _schedulers.ForEach(
+                scheduler => scheduler.ReadyToStopTransmission());
+        }
+
+        public void TransmissionStopped()
+        {
+            _displaySystems.ForEach(
+                displaySystem=>displaySystem.TransmissionStopped());
+        }
+    }
 }
