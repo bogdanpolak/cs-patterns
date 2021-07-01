@@ -140,8 +140,12 @@ namespace DesignPatterns.Mediator
         void TransmissionStopped();
     }
     
-    // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-
+    // Mediator Colleagues
+    //   (systems which are communicating between themself using mediator)
+    // --------------------------------------------------------------------
+    // Scheduler
+    // --------------------------------------------------------------------
+    
     public interface IScheduler
     {
         void StartTransmission();
@@ -149,31 +153,6 @@ namespace DesignPatterns.Mediator
         void ReadyToStopTransmission();
     }
 
-    public interface IFieldSystem
-    {
-        void StartFirstHalf();
-        void MatchMinute(int minute);
-        void ScoreGoal(Player player);
-        bool IsConnected();
-        void EndFirstHalf();
-    }
-
-    public interface IDisplaySystem
-    {
-        void ShowWelcomeScreen();
-        void SetTimer(int i);
-        void ShowStatus(int minute);
-        void ScoreGoal(int minute, Player player);
-        void FirstHalfFinished();
-        void TransmissionStopped();
-        void TransmissionStarted();
-    }
-
-    // --------------------------------------------------------------------
-    // Mediator Colleagues
-    //   (systems which are communicating between themself using mediator)
-    // --------------------------------------------------------------------
-    
     public class Scheduler : IScheduler
     {
         private readonly IMediator _mediator;
@@ -194,6 +173,19 @@ namespace DesignPatterns.Mediator
         {
             _mediator.TransmissionStopped();
         }
+    }
+
+    // --------------------------------------------------------------------
+    // Field System
+    // --------------------------------------------------------------------
+
+    public interface IFieldSystem
+    {
+        void StartFirstHalf();
+        void MatchMinute(int minute);
+        void ScoreGoal(Player player);
+        bool IsConnected();
+        void EndFirstHalf();
     }
 
     public class FieldSystem : IFieldSystem
@@ -220,8 +212,6 @@ namespace DesignPatterns.Mediator
             _mediator.Game_FirstHalfEnded();
         }
         
-        //TODO: Add StartSecondHalf()
-
         public void MatchMinute(int minute)
         {
             _matchMinute = minute;
@@ -235,6 +225,21 @@ namespace DesignPatterns.Mediator
         }
 
         public bool IsConnected() => true;
+    }
+
+    // --------------------------------------------------------------------
+    // Display System
+    // --------------------------------------------------------------------
+
+    public interface IDisplaySystem
+    {
+        void ShowWelcomeScreen();
+        void SetTimer(int i);
+        void ShowStatus(int minute);
+        void ScoreGoal(int minute, Player player);
+        void FirstHalfFinished();
+        void TransmissionStopped();
+        void TransmissionStarted();
     }
 
     public class DisplaySystem : IDisplaySystem
