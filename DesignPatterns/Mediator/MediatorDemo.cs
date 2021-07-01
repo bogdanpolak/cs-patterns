@@ -20,7 +20,6 @@ namespace DesignPatterns.Mediator
             IFieldSystem fieldSystem = new FieldSystem(mediator, game);
             IScheduler scheduler = new Scheduler(mediator);
             
-            //TODO: Extract code into MatchSimulator (mediator system)
             scheduler.StartTransmission();
             fieldSystem.StartFirstHalf();
             IntRange.Gen(1, 45).ForEach(minute => {
