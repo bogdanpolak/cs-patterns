@@ -12,8 +12,8 @@
 ## Mediator Demo: Soccer Match System
 
 Components:
-* Scheduler
-* Field System
-* Display System
+* Scheduler - game broadcasting system
+* Field System - game events generator
+* Display System - on-screen game information (for demo purpose console is used as the display)
 
 ![](docs/mediator-diagram.png)
