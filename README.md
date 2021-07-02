@@ -17,3 +17,16 @@ Components:
 * Display System - on-screen game information (for demo purpose console is used as the display)
 
 ![](docs/mediator-diagram.png)
+
+Pattern advantages (demonstrated in this demo):
+* Reduce coupling between various components
+* Ease of introduce more output (display) systems
+* Communication between systems is collected in one place and is easier to control
+
+Scenarios (not coverd in this demo):
+* Two-way communication:
+   * [A] => mediator => [B] => mediator => [A]
+* Chained communication:
+   * [A] => mediator => [B] => mediator => [C]
+* Chained mediators (separating two domains)
+   * [A] => mediator1 => mediator2 => [B]
